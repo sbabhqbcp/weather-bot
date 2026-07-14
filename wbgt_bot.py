@@ -50,6 +50,7 @@ def format_message(station_data, timestamp):
     return (
         f"*WBGT Update*\n"
         #f"{dt}\n\n"
+        f" "
         f"WBGT: *{wbgt:.1f}°C*\n"
         f"Colour Code: {emoji} *{colour}*"
     )
