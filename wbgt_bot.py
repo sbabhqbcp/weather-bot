@@ -13,20 +13,23 @@ TARGET_STATION = "S141"  # Replace with your station ID
 # File to remember the previous WBGT colour code
 STATE_FILE = "last_wbgt_status.txt"
 
+# Colour codes that should trigger an alert
+ALERT_LEVELS = {"RED", "BLACK", "CUT OFF"}
+
 
 def get_colour_code(wbgt: float):
     if wbgt <= 29.9:
-        return "", "WHITE"
+        return "⚪", "WHITE"
     elif wbgt <= 30.9:
-        return "", "GREEN"
+        return "🟢", "GREEN"
     elif wbgt <= 31.9:
-        return "", "YELLOW"
+        return "🟡", "YELLOW"
     elif wbgt <= 32.9:
-        return "", "RED"
+        return "🔴", "RED"
     elif wbgt <= 34.9:
-        return "", "BLACK"
+        return "⚫", "BLACK"
     else:
-        return "", "CUT OFF"
+        return "⛔", "CUT OFF"
 
 
 def fetch_wbgt():
@@ -49,8 +52,7 @@ def format_message(station_data, timestamp):
 
     return (
         f"*WBGT Update*\n"
-        #f"{dt}\n\n"
-        f" "
+        f"{dt}\n\n"
         f"WBGT: *{wbgt:.1f}°C*\n"
         f"Colour Code: {emoji} *{colour}*"
     )
@@ -78,8 +80,9 @@ async def main():
     _, current_colour = get_colour_code(wbgt)
     previous_colour = load_previous_status()
 
-    # Only send when the colour code changes
-    if current_colour != previous_colour:
+    # Only send when WBGT reaches RED or above, and it's a new state
+    # (i.e. we just entered this level or escalated further, e.g. RED -> BLACK)
+    if current_colour in ALERT_LEVELS and current_colour != previous_colour:
         message = format_message(station_data, timestamp)
         bot = Bot(token=TELEGRAM_TOKEN)
         await bot.send_message(
@@ -89,11 +92,11 @@ async def main():
         )
         print(f"Sent. Colour changed to {current_colour}.")
     else:
-        print(f"No change ({current_colour}). Skipping send.")
+        print(f"No alert needed ({current_colour}). Skipping send.")
 
     # Save the current colour code for the next run
     save_status(current_colour)
 
 
-if __name__ == "__main__":
+if name == "main":
     asyncio.run(main())
