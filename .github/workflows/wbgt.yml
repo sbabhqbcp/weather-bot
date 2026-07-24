@@ -1,31 +1,37 @@
 name: WBGT Update
- 
+
 on:
-  workflow_dispatch:
- 
+  schedule:
+    - cron: '*/30 * * * *'   # runs every 30 minutes
+  workflow_dispatch:          # allows manual trigger from the Actions tab
+
 permissions:
-  contents: write   # required so the workflow can commit & push the state file back
- 
+  contents: write # required so the workflow can commit & push the state file back
+
 jobs:
   send-wbgt:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
- 
+
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
           python-version: '3.11'
- 
+
       - name: Install dependencies
-        run: pip install requests python-telegram-bot
- 
+        run: pip install -r requirements.txt
+
       - name: Run bot
         run: python wbgt_bot.py
         env:
+          TELEGRAM_API_ID: ${{ secrets.TELEGRAM_API_ID }}
+          TELEGRAM_API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
+          TELETHON_SESSION: ${{ secrets.TELETHON_SESSION }}
+          SOURCE_CHANNEL: ${{ secrets.SOURCE_CHANNEL }}
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           CHANNEL_ID: ${{ secrets.CHANNEL_ID }}
- 
+
       - name: Commit updated state file
         run: |
           git config user.name "github-actions[bot]"
