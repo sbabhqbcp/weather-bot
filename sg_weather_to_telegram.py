@@ -122,20 +122,6 @@ async def fetch_wbgt_from_channel():
 
 
 # ============================================================
-# MESSAGE FORMATTING
-# ============================================================
-
-def format_message(wbgt: float, dt: datetime):
-    emoji, colour = get_colour_code(wbgt)
-    ts = dt.strftime("%d %b %Y, %I:%M %p")
-    return (
-        f"*WBGT Update — {TARGET_LOCATION}*\n"
-        f"WBGT: *{wbgt:.1f}°C*\n"
-        f"Colour Code: {emoji} *{colour}*"
-    )
-
-
-# ============================================================
 # STATE (unchanged from original script)
 # ============================================================
 
