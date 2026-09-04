@@ -39,6 +39,6 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add -f last_uv_status.txt last_psi_status.txt last_wbgt_status.txt 2>/dev/null || true
+          git add -f last_uv_status.txt last_psi_status.txt last_pm25_status.txt last_wbgt_status.txt 2>/dev/null || true
           git diff --cached --quiet || git commit -m "Update UV/PSI/WBGT state [skip ci]"
           git push
