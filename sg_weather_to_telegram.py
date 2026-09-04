@@ -353,10 +353,10 @@ def save_metric_status(state_file, status):
 # ============================================================
 
 def format_combined_message(
+    wbgt, current_wbgt_colour, wbgt_dt, wbgt_triggered, wbgt_found,
     uv, current_uv_status, uv_triggered,
     psi, current_psi_status, psi_triggered,
     pm25, current_pm25_status, pm25_triggered,
-    wbgt, current_wbgt_colour, wbgt_dt, wbgt_triggered, wbgt_found,
 ):
     """
     One merged message showing all metrics at once. Whichever metric(s)
@@ -366,7 +366,7 @@ def format_combined_message(
     wbgt_triggered fires on ANY colour change (WHITE <-> GREEN <-> YELLOW <->
     RED <-> BLACK <-> CUT OFF), same as UV, PSI, and PM2.5.
     """
-    lines = ["*🇸🇬 Singapore Weather Alert*"]
+    lines = ["*Weather Alert*"]
 
     uv_flag = " 🚨 CHANGED" if uv_triggered else ""
     lines.append(f"\n☀️ *UV Index:* *{current_uv_status}*{uv_flag}")
