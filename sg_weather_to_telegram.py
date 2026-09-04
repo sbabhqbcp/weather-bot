@@ -129,7 +129,7 @@ def format_message(wbgt: float, dt: datetime):
     emoji, colour = get_colour_code(wbgt)
     ts = dt.strftime("%d %b %Y, %I:%M %p")
     return (
-        f"WBGT *WBGT Update — {TARGET_LOCATION}*\n"
+        f"*WBGT Update — {TARGET_LOCATION}*\n"
         f"WBGT: *{wbgt:.1f}°C*\n"
         f"Colour Code: {emoji} *{colour}*"
     )
@@ -360,10 +360,10 @@ def format_combined_message(
         emoji, _ = get_colour_code(wbgt)
         wbgt_flag = f" 🚨 changed to {current_wbgt_colour}" if wbgt_triggered else ""
         lines.append(
-            f"\n🌡️ *{TARGET_LOCATION}:* {wbgt:.1f}°C — {emoji} *{current_wbgt_colour}*{wbgt_flag}"
+            f"\n🌡️ *WBGT ({TARGET_LOCATION}):* {wbgt:.1f}°C — {emoji} *{current_wbgt_colour}*{wbgt_flag}"
         )
     else:
-        lines.append(f"\n🌡️ *{TARGET_LOCATION}:* reading not found")
+        lines.append(f"\n🌡️ *WBGT ({TARGET_LOCATION}):* reading not found")
 
     return "\n".join(lines)
 
