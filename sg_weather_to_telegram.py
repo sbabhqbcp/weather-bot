@@ -122,6 +122,20 @@ async def fetch_wbgt_from_channel():
 
 
 # ============================================================
+# MESSAGE FORMATTING
+# ============================================================
+
+def format_message(wbgt: float, dt: datetime):
+    emoji, colour = get_colour_code(wbgt)
+    ts = dt.strftime("%d %b %Y, %I:%M %p")
+    return (
+        f"*WBGT Update — {TARGET_LOCATION}*\n"
+        f"WBGT: *{wbgt:.1f}°C*\n"
+        f"Colour Code: {emoji} *{colour}*"
+    )
+
+
+# ============================================================
 # STATE (unchanged from original script)
 # ============================================================
 
@@ -353,10 +367,10 @@ def save_metric_status(state_file, status):
 # ============================================================
 
 def format_combined_message(
-    wbgt, current_wbgt_colour, wbgt_dt, wbgt_triggered, wbgt_found,
     uv, current_uv_status, uv_triggered,
     psi, current_psi_status, psi_triggered,
     pm25, current_pm25_status, pm25_triggered,
+    wbgt, current_wbgt_colour, wbgt_dt, wbgt_triggered, wbgt_found,
 ):
     """
     One merged message showing all metrics at once. Whichever metric(s)
@@ -367,6 +381,17 @@ def format_combined_message(
     RED <-> BLACK <-> CUT OFF), same as UV, PSI, and PM2.5.
     """
     lines = ["*Weather Alert*"]
+
+    if wbgt_found:
+        emoji, _ = get_colour_code(wbgt)
+        wbgt_flag = "🚨 CHANGED" if wbgt_triggered else ""
+        lines.append(
+            f"\n🌡️ *WBGT ({TARGET_LOCATION}):* {wbgt:.1f}°C — {emoji} *{current_wbgt_colour}*"
+        )
+        if wbgt_flag:
+            lines.append(wbgt_flag)
+    else:
+        lines.append(f"\n🌡️ *WBGT ({TARGET_LOCATION}):* reading not found")
 
     uv_flag = " 🚨 CHANGED" if uv_triggered else ""
     lines.append(f"\n☀️ *UV Index:* *{current_uv_status}*{uv_flag}")
@@ -379,17 +404,6 @@ def format_combined_message(
     pm25_flag = " 🚨 CHANGED" if pm25_triggered else ""
     lines.append(f"\n🌁 *PM2.5 (North, 1-hr):* *{current_pm25_status}*{pm25_flag}")
     lines.append(f"_{get_pm25_advisory(current_pm25_status)}_")
-
-    if wbgt_found:
-        emoji, _ = get_colour_code(wbgt)
-        wbgt_flag = "🚨 CHANGED" if wbgt_triggered else ""
-        lines.append(
-            f"\n🌡️ *WBGT ({TARGET_LOCATION}):* {wbgt:.1f}°C — {emoji} *{current_wbgt_colour}*"
-        )
-        if wbgt_flag:
-            lines.append(wbgt_flag)
-    else:
-        lines.append(f"\n🌡️ *WBGT ({TARGET_LOCATION}):* reading not found")
 
     return "\n".join(lines)
 
