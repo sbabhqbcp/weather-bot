@@ -380,7 +380,7 @@ def format_combined_message(
     wbgt_triggered fires on ANY colour change (WHITE <-> GREEN <-> YELLOW <->
     RED <-> BLACK <-> CUT OFF), same as UV, PSI, and PM2.5.
     """
-    lines = ["*Weather Alert*"]
+    lines = ["*☁️ Weather Alert*"]
 
     if wbgt_found:
         emoji, _ = get_colour_code(wbgt)
