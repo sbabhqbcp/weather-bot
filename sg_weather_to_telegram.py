@@ -153,15 +153,17 @@ def save_status(status: str):
 
 # ============================================================
 # ============================================================
-# CONFIG — UV Index / PSI (data.gov.sg APIs)
+# CONFIG — UV Index / PSI / PM2.5 (data.gov.sg APIs)
 # ============================================================
 
 UV_API = "https://api-open.data.gov.sg/v2/real-time/api/uv"
 PSI_API = "https://api-open.data.gov.sg/v2/real-time/api/psi"
+PM25_API = "https://api-open.data.gov.sg/v2/real-time/api/pm25"
 
 # Files to remember the previous category for each metric
 UV_STATE_FILE = "last_uv_status.txt"
 PSI_STATE_FILE = "last_psi_status.txt"
+PM25_STATE_FILE = "last_pm25_status.txt"
 
 
 def fetch_uv():
@@ -176,6 +178,13 @@ def fetch_psi():
     response.raise_for_status()
     data = response.json()
     return data["data"]["items"][0]["readings"]["psi_twenty_four_hourly"]["north"]
+
+
+def fetch_pm25():
+    response = requests.get(PM25_API, timeout=10)
+    response.raise_for_status()
+    data = response.json()
+    return data["data"]["items"][0]["readings"]["pm25_one_hourly"]["north"]
 
 
 def get_uv_status(uv):
@@ -233,6 +242,31 @@ def get_psi_advisory(status: str) -> str:
         return "Avoid prolonged or strenuous outdoor physical exertion. N95 masks recommended for those who must do so."
     else:  # HAZARDOUS
         return "Avoid outdoor activity. N95 masks recommended if going outdoors is unavoidable."
+
+
+def get_pm25_status(pm25):
+    if pm25 <= 55:
+        return "NORMAL"
+    elif pm25 <= 150:
+        return "ELEVATED"
+    elif pm25 <= 250:
+        return "HIGH"
+    else:
+        return "VERY HIGH"
+
+
+def get_pm25_advisory(status: str) -> str:
+    if status == "NORMAL":
+        return "Normal activities"
+    elif status == "ELEVATED":
+        return "Reduce strenuous outdoor activities for the next hour"
+    elif status == "HIGH":
+        return "Avoid strenuous outdoor activities for the next hour"
+    else:  # VERY HIGH
+        return (
+            "• Minimise all outdoor activities for the next hour\n"
+            "• Don PPE (N95) when performing essential outdoor duties"
+        )
 
 
 def get_uv_message(status, uv):
@@ -335,15 +369,16 @@ def save_metric_status(state_file, status):
 def format_combined_message(
     uv, current_uv_status, uv_triggered,
     psi, current_psi_status, psi_triggered,
+    pm25, current_pm25_status, pm25_triggered,
     wbgt, current_wbgt_colour, wbgt_dt, wbgt_triggered, wbgt_found,
 ):
     """
-    One merged message showing all three metrics at once. Whichever metric(s)
+    One merged message showing all metrics at once. Whichever metric(s)
     triggered the send get a 🚨 CHANGED flag next to them; the others are
     still shown for context but unflagged.
 
     wbgt_triggered fires on ANY colour change (WHITE <-> GREEN <-> YELLOW <->
-    RED <-> BLACK <-> CUT OFF), same as UV and PSI.
+    RED <-> BLACK <-> CUT OFF), same as UV, PSI, and PM2.5.
     """
     lines = ["*🇸🇬 Singapore Weather Alert*"]
 
@@ -354,6 +389,10 @@ def format_combined_message(
     psi_flag = " 🚨 CHANGED" if psi_triggered else ""
     lines.append(f"\n🌫️ *PSI (North):* *{current_psi_status}*{psi_flag}")
     lines.append(f"_{get_psi_advisory(current_psi_status)}_")
+
+    pm25_flag = " 🚨 CHANGED" if pm25_triggered else ""
+    lines.append(f"\n🌁 *PM2.5 (North, 1-hr):* *{current_pm25_status}*{pm25_flag}")
+    lines.append(f"_{get_pm25_advisory(current_pm25_status)}_")
 
     if wbgt_found:
         emoji, _ = get_colour_code(wbgt)
@@ -396,6 +435,16 @@ async def main():
     )
     save_metric_status(PSI_STATE_FILE, current_psi_status)
 
+    # --- PM2.5 (1-hr, North) ---
+    pm25 = fetch_pm25()
+    current_pm25_status = get_pm25_status(pm25)
+    previous_pm25_status = load_previous_metric_status(PM25_STATE_FILE)
+
+    pm25_triggered = current_pm25_status != previous_pm25_status and not (
+        previous_pm25_status is None and current_pm25_status == "NORMAL"
+    )
+    save_metric_status(PM25_STATE_FILE, current_pm25_status)
+
     # --- WBGT ---
     # Punch-out (send) criteria is now ANY category change (e.g. WHITE ->
     # GREEN still punches out) — same behaviour as UV and PSI above. The
@@ -415,10 +464,11 @@ async def main():
         save_status(current_wbgt_colour)
 
     # --- Send one combined message if any metric changed category ---
-    if uv_triggered or psi_triggered or wbgt_triggered:
+    if uv_triggered or psi_triggered or pm25_triggered or wbgt_triggered:
         message = format_combined_message(
             uv, current_uv_status, uv_triggered,
             psi, current_psi_status, psi_triggered,
+            pm25, current_pm25_status, pm25_triggered,
             wbgt, current_wbgt_colour, dt, wbgt_triggered, wbgt_found,
         )
         await bot.send_message(
@@ -428,11 +478,13 @@ async def main():
         )
         print(
             "Combined notification sent. "
-            f"UV triggered={uv_triggered}, PSI triggered={psi_triggered}, WBGT triggered={wbgt_triggered}"
+            f"UV triggered={uv_triggered}, PSI triggered={psi_triggered}, "
+            f"PM2.5 triggered={pm25_triggered}, WBGT triggered={wbgt_triggered}"
         )
     else:
         print(
             f"No change. UV={current_uv_status}, PSI={current_psi_status}, "
+            f"PM2.5={current_pm25_status}, "
             f"WBGT={current_wbgt_colour if wbgt_found else 'N/A'}. Skipping send."
         )
 
