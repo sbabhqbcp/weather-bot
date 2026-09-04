@@ -357,11 +357,12 @@ def format_combined_message(
 
     if wbgt_found:
         emoji, _ = get_colour_code(wbgt)
-        wbgt_flag = " 🚨 CHANGED" if wbgt_triggered else ""
+        wbgt_flag = "🚨 CHANGED" if wbgt_triggered else ""
         lines.append(
-            f"\n🌡️ *WBGT ({TARGET_LOCATION}):* {wbgt:.1f}°C — {emoji} *{current_wbgt_colour}*",
-            f"\n {wbgt_flag}"
+            f"\n🌡️ *WBGT ({TARGET_LOCATION}):* {wbgt:.1f}°C — {emoji} *{current_wbgt_colour}*"
         )
+        if wbgt_flag:
+            lines.append(wbgt_flag)
     else:
         lines.append(f"\n🌡️ *WBGT ({TARGET_LOCATION}):* reading not found")
 
