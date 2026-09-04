@@ -1,0 +1,44 @@
+name: Hourly SG PSI + UV to Telegram
+
+on:
+  schedule:
+    - cron: "5 * * * *"  # 5 minutes past every hour (UTC)
+  workflow_dispatch: {}
+
+jobs:
+  post-weather:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # needed to commit the UV state file back to the repo
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Fetch UV + PSI + WBGT and post to Telegram
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          CHANNEL_ID: ${{ secrets.CHANNEL_ID }}
+          TELEGRAM_API_ID: ${{ secrets.TELEGRAM_API_ID }}
+          TELEGRAM_API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
+          TELETHON_SESSION: ${{ secrets.TELETHON_SESSION }}
+          SOURCE_CHANNEL: ${{ secrets.SOURCE_CHANNEL }}
+        run: python sg_weather_to_telegram.py
+
+      # GitHub Actions runners are ephemeral, so the UV "last status" file
+      # written by the script would be lost after each run unless we commit
+      # it back to the repo. This keeps UV change-detection working across runs.
+      - name: Persist state files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -f last_uv_status.txt last_psi_status.txt last_wbgt_status.txt 2>/dev/null || true
+          git diff --cached --quiet || git commit -m "Update UV/PSI/WBGT state [skip ci]"
+          git push
