@@ -358,7 +358,7 @@ def format_combined_message(
 
     if wbgt_found:
         emoji, _ = get_colour_code(wbgt)
-        wbgt_flag = f" 🚨 changed to {current_wbgt_colour}" if wbgt_triggered else ""
+        wbgt_flag = f" 🚨 CHANGED TO {current_wbgt_colour}" if wbgt_triggered else ""
         lines.append(
             f"\n🌡️ *WBGT ({TARGET_LOCATION}):* {wbgt:.1f}°C — {emoji} *{current_wbgt_colour}*{wbgt_flag}"
         )
