@@ -129,7 +129,7 @@ def format_message(wbgt: float, dt: datetime):
     emoji, colour = get_colour_code(wbgt)
     ts = dt.strftime("%d %b %Y, %I:%M %p")
     return (
-        f"*WBGT Update — {TARGET_LOCATION}*\n"
+        f"WBGT *WBGT Update — {TARGET_LOCATION}*\n"
         f"WBGT: *{wbgt:.1f}°C*\n"
         f"Colour Code: {emoji} *{colour}*"
     )
@@ -151,6 +151,7 @@ def save_status(status: str):
         f.write(status)
 
 
+# ============================================================
 # ============================================================
 # CONFIG — UV Index / PSI (data.gov.sg APIs)
 # ============================================================
@@ -190,6 +191,21 @@ def get_uv_status(uv):
         return "EXTREME"
 
 
+# Same advisory wording as get_uv_message() below, factored out so the
+# combined message can show just the advisory line per metric.
+def get_uv_advisory(status: str) -> str:
+    if status == "LOW":
+        return "No sun protection is required."
+    elif status == "MODERATE":
+        return "Some protection against sunburn is needed."
+    elif status == "HIGH":
+        return "Reduce prolonged exposure to the sun."
+    elif status == "VERY HIGH":
+        return "Extra sun protection is strongly recommended."
+    else:  # EXTREME
+        return "Avoid outdoor activities where possible."
+
+
 def get_psi_status(psi):
     if psi <= 50:
         return "GOOD"
@@ -201,6 +217,22 @@ def get_psi_status(psi):
         return "VERY UNHEALTHY"
     else:
         return "HAZARDOUS"
+
+
+# NEA/MOH haze health advisory wording, by PSI band:
+# https://www.moh.gov.sg/newsroom/faq-impact-of-haze-on-health/
+# https://www.haze.gov.sg (Haze/PM/PSI activity guide)
+def get_psi_advisory(status: str) -> str:
+    if status == "GOOD":
+        return "Normal Activities"
+    elif status == "MODERATE":
+        return "Normal Activities"
+    elif status == "UNHEALTHY":
+        return "Minimise prolonged or strenuous outdoor physical exertion."
+    elif status == "VERY UNHEALTHY":
+        return "Avoid prolonged or strenuous outdoor physical exertion. N95 masks recommended for those who must do so."
+    else:  # HAZARDOUS
+        return "Avoid outdoor activity. N95 masks recommended if going outdoors is unavoidable."
 
 
 def get_uv_message(status, uv):
@@ -307,25 +339,31 @@ def format_combined_message(
 ):
     """
     One merged message showing all three metrics at once. Whichever metric(s)
-    triggered the send (i.e. changed category) get a 🚨 flag next to them;
-    the others are still shown for context but unflagged.
+    triggered the send get a 🚨 flag next to them; the others are still shown
+    for context but unflagged.
+
+    wbgt_triggered only fires on the RED-tier punch-out criteria (entering
+    RED/BLACK/CUT OFF, or dropping back down from it) — not on every colour
+    change — so the "changed to X" flag only ever appears for that case.
     """
     lines = ["*🇸🇬 Singapore Weather Alert*"]
 
     uv_flag = " 🚨 CHANGED" if uv_triggered else ""
     lines.append(f"\n☀️ *UV Index:* *{current_uv_status}*{uv_flag}")
+    lines.append(f"_{get_uv_advisory(current_uv_status)}_")
 
     psi_flag = " 🚨 CHANGED" if psi_triggered else ""
-    lines.append(f"🌫️ *PSI (North):* *{current_psi_status}*{psi_flag}")
+    lines.append(f"\n🌫️ *PSI (North):* *{current_psi_status}*{psi_flag}")
+    lines.append(f"_{get_psi_advisory(current_psi_status)}_")
 
     if wbgt_found:
         emoji, _ = get_colour_code(wbgt)
-        wbgt_flag = " 🚨 CHANGED" if wbgt_triggered else ""
+        wbgt_flag = f" 🚨 changed to {current_wbgt_colour}" if wbgt_triggered else ""
         lines.append(
-            f"🌡️ *WBGT ({TARGET_LOCATION}):* {wbgt:.1f}°C — {emoji} *{current_wbgt_colour}*{wbgt_flag}"
+            f"\n🌡️ *{TARGET_LOCATION}:* {wbgt:.1f}°C — {emoji} *{current_wbgt_colour}*{wbgt_flag}"
         )
     else:
-        lines.append(f"🌡️ *WBGT ({TARGET_LOCATION}):* reading not found")
+        lines.append(f"\n🌡️ *{TARGET_LOCATION}:* reading not found")
 
     return "\n".join(lines)
 
@@ -358,6 +396,9 @@ async def main():
     save_metric_status(PSI_STATE_FILE, current_psi_status)
 
     # --- WBGT ---
+    # Punch-out (send + display "changed to X") criteria stays exactly as
+    # should_send() defines it: entering RED/BLACK/CUT OFF, or dropping back
+    # down from that tier. No display for changes below RED.
     wbgt, dt = await fetch_wbgt_from_channel()
     wbgt_found = wbgt is not None
     current_wbgt_colour = None
