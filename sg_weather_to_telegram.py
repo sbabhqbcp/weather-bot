@@ -339,12 +339,11 @@ def format_combined_message(
 ):
     """
     One merged message showing all three metrics at once. Whichever metric(s)
-    triggered the send get a 🚨 flag next to them; the others are still shown
-    for context but unflagged.
+    triggered the send get a 🚨 CHANGED flag next to them; the others are
+    still shown for context but unflagged.
 
-    wbgt_triggered only fires on the RED-tier punch-out criteria (entering
-    RED/BLACK/CUT OFF, or dropping back down from it) — not on every colour
-    change — so the "changed to X" flag only ever appears for that case.
+    wbgt_triggered fires on ANY colour change (WHITE <-> GREEN <-> YELLOW <->
+    RED <-> BLACK <-> CUT OFF), same as UV and PSI.
     """
     lines = ["*🇸🇬 Singapore Weather Alert*"]
 
@@ -358,7 +357,7 @@ def format_combined_message(
 
     if wbgt_found:
         emoji, _ = get_colour_code(wbgt)
-        wbgt_flag = f" 🚨 CHANGED TO {current_wbgt_colour}" if wbgt_triggered else ""
+        wbgt_flag = " 🚨 CHANGED" if wbgt_triggered else ""
         lines.append(
             f"\n🌡️ *WBGT ({TARGET_LOCATION}):* {wbgt:.1f}°C — {emoji} *{current_wbgt_colour}*{wbgt_flag}"
         )
@@ -396,9 +395,10 @@ async def main():
     save_metric_status(PSI_STATE_FILE, current_psi_status)
 
     # --- WBGT ---
-    # Punch-out (send + display "changed to X") criteria stays exactly as
-    # should_send() defines it: entering RED/BLACK/CUT OFF, or dropping back
-    # down from that tier. No display for changes below RED.
+    # Punch-out (send) criteria is now ANY category change (e.g. WHITE ->
+    # GREEN still punches out) — same behaviour as UV and PSI above. The
+    # first-ever run is skipped (no previous saved status yet) so it
+    # doesn't spam on initial setup, matching the UV/PSI pattern.
     wbgt, dt = await fetch_wbgt_from_channel()
     wbgt_found = wbgt is not None
     current_wbgt_colour = None
@@ -409,7 +409,7 @@ async def main():
     else:
         _, current_wbgt_colour = get_colour_code(wbgt)
         previous_colour = load_previous_status()
-        wbgt_triggered = should_send(current_wbgt_colour, previous_colour)
+        wbgt_triggered = previous_colour is not None and current_wbgt_colour != previous_colour
         save_status(current_wbgt_colour)
 
     # --- Send one combined message if any metric changed category ---
